@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>电梯物联网状态诊断与困人告警服务</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-icon">🛗</span>
+      <span class="brand-title">电梯物联网诊断平台</span>
+    </div>
+    <nav id="main-nav" class="nav">
+      <a href="/" data-nav="/">电梯总览</a>
+      <a href="/events" data-nav="/events">困人事件</a>
+      <a href="/diagnosis" data-nav="/diagnosis">故障诊断</a>
+      <a href="/watchlist" data-nav="/watchlist">重点关注</a>
+    </nav>
+    <div id="clock" class="clock"></div>
+  </header>
+  <main id="app" class="container"></main>
+  <div id="toast" class="toast" hidden></div>
+  <footer class="footer">
+    电梯物联网状态诊断与困人告警服务 · go:embed 原生前端 · 离线可运行
+  </footer>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
