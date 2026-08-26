@@ -73,7 +73,9 @@ func (r *StateReport) HealthStatus() string {
 }
 
 // EntrapmentCondition 判断当前上报是否满足困人条件：
-// 非平层 + 门关闭 + 存在乘客信号。
+// 非平层 + 门关闭 + 存在乘客信号（警铃/红外）。
+//
+// 乘客信号是必要条件：没有乘客信号说明无人被困，不得计入困人观测。
 func (r *StateReport) EntrapmentCondition() bool {
-	return !r.Leveling && r.Door == DoorClosed
+	return !r.Leveling && r.Door == DoorClosed && r.Passenger.Present()
 }

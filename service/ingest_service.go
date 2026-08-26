@@ -114,7 +114,9 @@ func (s *IngestService) trackEntrapment(report *domain.StateReport, result *Inge
 	threshold := s.cfg.EntrapmentThreshold
 
 	if !report.EntrapmentCondition() {
-		// 条件中断：清空观测，重新计时。
+		// 条件中断：清空观测，重新计时。否则条件一旦恢复会携带上轮
+		// 残留秒数，导致明明未满 30 秒就误报困人。
+		s.store.Observations.Reset(report.ElevatorID)
 		result.EntrapmentState = "none"
 		return
 	}
@@ -131,11 +133,25 @@ func (s *IngestService) trackEntrapment(report *domain.StateReport, result *Inge
 		}
 	} else {
 		gap := now.Sub(obs.LastReportAt)
-		if gap <= 0 {
-			gap = period
+		// 上报间隔超过两个周期视作链路中断（终端离线/重启）：旧时长
+		// 不再可信，丢弃本轮观测从头计时，避免单条上报凭空注入
+		// 数千秒、瞬间触发困人。gap 为零（同时间戳或乱序）兜底为
+		// 一个周期，保证计时不丢步。
+		if gap > 2*period {
+			obs = &store.EntrapmentObservation{
+				ElevatorID:         report.ElevatorID,
+				Active:             true,
+				FirstSeenAt:        now,
+				LastReportAt:       now,
+				ConsecutiveSeconds: 0,
+			}
+		} else {
+			if gap <= 0 {
+				gap = period
+			}
+			obs.ConsecutiveSeconds += int(gap.Seconds())
+			obs.LastReportAt = now
 		}
-		obs.ConsecutiveSeconds += int(gap.Seconds())
-		obs.LastReportAt = now
 	}
 	obs.ReportIDs = append(obs.ReportIDs, report.ID)
 	s.store.Observations.Set(obs)
@@ -165,8 +181,9 @@ func (s *IngestService) trackEntrapment(report *domain.StateReport, result *Inge
 	at := now
 	s.auditRecord("event.alert", "system", "event", event.ID,
 		fmt.Sprintf("电梯 %s 触发困人告警，持续 %d 秒", report.ElevatorID, obs.ConsecutiveSeconds), at)
-	// 生成事件后重置本轮观测计时，避免重复累加。
-	s.store.Observations.Set(obs)
+	// 生成事件后重置本轮观测计时：事件解除/升级后条件若继续，必须重新
+	// 累计满阈值才能再次告警，避免单条上报立即重复触发。
+	s.store.Observations.Reset(report.ElevatorID)
 
 	result.EntrapmentEvent = event
 	result.EntrapmentState = "triggered"
