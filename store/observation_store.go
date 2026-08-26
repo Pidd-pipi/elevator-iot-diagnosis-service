@@ -53,10 +53,16 @@ func (s *ObservationStore) All() map[string]*EntrapmentObservation {
 }
 
 // Restore 从快照恢复。
+//
+// 复制入参 map 而非直接持有引用，避免后续写入污染调用方快照。
 func (s *ObservationStore) Restore(records map[string]*EntrapmentObservation) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.records = records
+	out := make(map[string]*EntrapmentObservation, len(records))
+	for k, v := range records {
+		out[k] = v
+	}
+	s.records = out
 }
 
 // Elapsed 返回某电梯当前累计的连续困人秒数（无观测返回 0）。

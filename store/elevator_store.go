@@ -20,6 +20,8 @@ func NewElevatorStore() *ElevatorStore {
 
 // Save 新增或覆盖电梯台账。
 func (s *ElevatorStore) Save(e *domain.Elevator) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	if e.ID == "" {
 		e.ID = NewID("elevator")
 	}
@@ -35,7 +37,7 @@ func (s *ElevatorStore) Get(id string) (*domain.Elevator, bool) {
 	if !ok {
 		return nil, false
 	}
-	return e, true
+	return e.Clone(), true
 }
 
 // List 返回全部电梯，按 ID 排序保证输出稳定。
@@ -66,6 +68,8 @@ func (s *ElevatorStore) ListWatchlisted() []*domain.Elevator {
 
 // Count 返回电梯总数。
 func (s *ElevatorStore) Count() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return len(s.records)
 }
 
@@ -81,8 +85,15 @@ func (s *ElevatorStore) All() map[string]*domain.Elevator {
 }
 
 // Restore 从快照恢复记录。
+//
+// 复制入参 map 而非直接持有其引用，避免后续写入污染调用方快照
+// （恢复后继续加电梯不应改动原快照数据）。
 func (s *ElevatorStore) Restore(records map[string]*domain.Elevator) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.records = records
+	out := make(map[string]*domain.Elevator, len(records))
+	for k, v := range records {
+		out[k] = v
+	}
+	s.records = out
 }

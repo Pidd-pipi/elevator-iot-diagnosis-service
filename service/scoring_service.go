@@ -34,12 +34,17 @@ func (s *ScoringService) GetScore(elevatorID string) (*domain.ScoreDetail, error
 }
 
 // ComputeScoreFor 计算评分明细并同步电梯台账（供其他服务复用）。
+//
+// 评分须落台账：调用 Elevator.ApplyScore 写回 HealthScore 与 Watchlisted 标记，
+// 否则列表与重点关注名单将因「查完不落台账」而出现口径不一致。
 func ComputeScoreFor(st *store.Store, cfg *config.Config, elevatorID string, now time.Time) (*domain.ScoreDetail, error) {
-	_, ok := st.Elevators.Get(elevatorID)
+	e, ok := st.Elevators.Get(elevatorID)
 	if !ok {
 		return nil, fmt.Errorf("%w: 电梯 %s", domain.ErrNotFound, elevatorID)
 	}
 	detail := computeScoreDetail(st, cfg, elevatorID, now)
+	e.ApplyScore(detail.Score, cfg.WatchlistThreshold)
+	st.Elevators.Save(e)
 	return detail, nil
 }
 

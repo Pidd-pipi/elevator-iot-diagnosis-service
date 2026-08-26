@@ -112,8 +112,14 @@ func (s *FaultStore) All() map[string]*domain.FaultCodeLog {
 }
 
 // Restore 从快照恢复。
+//
+// 复制入参 map 而非直接持有引用，避免后续写入污染调用方快照。
 func (s *FaultStore) Restore(records map[string]*domain.FaultCodeLog) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.records = records
+	out := make(map[string]*domain.FaultCodeLog, len(records))
+	for k, v := range records {
+		out[k] = v
+	}
+	s.records = out
 }
