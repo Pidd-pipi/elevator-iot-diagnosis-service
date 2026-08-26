@@ -86,12 +86,17 @@ func (h *ReportHandler) Ingest(w http.ResponseWriter, r *http.Request) {
 		Direction:      direction,
 		Door:           door,
 		Leveling:       leveling,
+		FaultCode:      req.FaultCode,
 		Passenger:      passenger,
 		AlarmActive:    req.AlarmActive,
 		InfraredActive: req.InfraredActive,
 		ReportedAt:     reportedAt,
 	}
 
-	result, _ := h.svc.Ingest.Ingest(report)
+	result, err := h.svc.Ingest.Ingest(report)
+	if err != nil {
+		Fail(w, r, err)
+		return
+	}
 	Created(w, r, result)
 }

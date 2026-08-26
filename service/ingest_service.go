@@ -192,7 +192,13 @@ func (s *IngestService) auditRecord(action, actor, targetType, targetID, detail 
 }
 
 // ListRecentReports 返回最近 N 条上报（供调试/页面展示）。
+//
+// limit<=0 时按默认上限 10 返回，避免总览的「最近上报」随历史堆积无界增长。
 func (s *IngestService) ListRecentReports(limit int) []*domain.StateReport {
+	const defaultLimit = 10
+	if limit <= 0 {
+		limit = defaultLimit
+	}
 	all := s.store.Reports.All()
 	items := make([]*domain.StateReport, 0, len(all))
 	for _, r := range all {
@@ -206,7 +212,7 @@ func (s *IngestService) ListRecentReports(limit int) []*domain.StateReport {
 			}
 		}
 	}
-	if limit > 0 && len(items) > limit {
+	if len(items) > limit {
 		items = items[:limit]
 	}
 	return items

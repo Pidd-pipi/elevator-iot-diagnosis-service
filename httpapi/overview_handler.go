@@ -28,7 +28,7 @@ func (h *OverviewHandler) Overview(w http.ResponseWriter, r *http.Request) {
 	if len(openEvents) > 5 {
 		openEvents = openEvents[:5]
 	}
-	recent := h.api.svc.Ingest.ListRecentReports(0)
+	recent := h.api.svc.Ingest.ListRecentReports(10)
 	audits := h.api.svc.Audit.List(10)
 
 	stats := map[string]any{

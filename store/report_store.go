@@ -79,14 +79,18 @@ func (s *ReportStore) CountBetween(elevatorID string, from, to time.Time) int {
 	return n
 }
 
-// CountToday 统计今日全量上报条数（用于总览）。
+// CountToday 统计今日服务端接收的上报条数（用于总览）。
+//
+// 以服务端接收时间 CreatedAt 为准，而非终端透传的 ReportedAt：
+// 终端可能携带非今日的历史时间戳，若按 ReportedAt 统计会把今日实际
+// 接收的上报漏算，导致「今日上报」与页面上可见的最近上报口径不一致。
 func (s *ReportStore) CountToday(now time.Time) int {
 	dayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	n := 0
 	for _, r := range s.records {
-		if !r.ReportedAt.Before(dayStart) {
+		if !r.CreatedAt.Before(dayStart) {
 			n++
 		}
 	}
