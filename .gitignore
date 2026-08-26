@@ -1,0 +1,12 @@
+# 运行期数据
+data/
+*.tmp
+
+# 编译产物
+bin/
+*.exe
+
+# 编辑器
+.DS_Store
+.idea/
+.vscode/
