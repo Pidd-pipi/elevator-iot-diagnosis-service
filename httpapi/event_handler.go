@@ -82,7 +82,7 @@ func (h *EventHandler) Accept(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	event, err := h.svc.Events.Accept(id, actorFromRequest(r), time.Now())
 	if err != nil {
-		Fail(w, r, fmt.Errorf("接单处理失败: %v", err))
+		Fail(w, r, fmt.Errorf("接单处理失败: %w", err))
 		return
 	}
 	OK(w, r, map[string]any{"event": event, "message": "接单成功，开始处置时限倒计时"})
@@ -138,7 +138,7 @@ func (h *EventHandler) Escalate(w http.ResponseWriter, r *http.Request) {
 	}
 	event, err := h.svc.Events.Escalate(id, actorFromRequest(r), req.Reason, time.Now())
 	if err != nil {
-		Fail(w, r, fmt.Errorf("升级失败: %v", err))
+		Fail(w, r, fmt.Errorf("升级失败: %w", err))
 		return
 	}
 	OK(w, r, map[string]any{"event": event, "message": "事件已升级并发送二次告警"})

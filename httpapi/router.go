@@ -19,6 +19,7 @@ import (
 // webFS 为 main 包通过 go:embed all:web 注入的内嵌前端资源。
 func Router(svc *service.Services, cfg *config.Config, logger *slog.Logger, webFS fs.FS) http.Handler {
 	api := NewAPI(svc, cfg, logger)
+	setErrorLogger(logger)
 
 	health := NewHealthHandler()
 	elevators := NewElevatorHandler(svc)

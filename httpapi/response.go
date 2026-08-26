@@ -5,11 +5,20 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"example.com/elevator-iot-diagnosis-service/domain"
 	"example.com/elevator-iot-diagnosis-service/middleware"
 )
+
+// errorLogger 用于记录命中 mapError 默认分支（即未被识别为领域错误的
+// 500 内部错误）的具体原因。由 Router 装配时通过 setErrorLogger 注入；
+// 未注入时静默跳过日志，避免影响不依赖路由装配的纯单元测试。
+var errorLogger *slog.Logger
+
+// setErrorLogger 注入错误日志记录器，供 Fail 在 500 路径落盘根因。
+func setErrorLogger(l *slog.Logger) { errorLogger = l }
 
 // Response 统一响应格式：code=0 表示成功，非 0 表示业务错误码。
 type Response struct {
@@ -42,6 +51,16 @@ func Created(w http.ResponseWriter, r *http.Request, data any) {
 // Fail 按领域错误类型映射 HTTP 状态码并写入统一错误响应。
 func Fail(w http.ResponseWriter, r *http.Request, err error) {
 	status, code, msg := mapError(err)
+	// 命中默认分支意味着错误未被识别为任一已知领域错误，返回 500。
+	// 此时根因对排障至关重要，务必落盘日志（含请求标识），避免「500 但日志无痕」。
+	if status == http.StatusInternalServerError && errorLogger != nil {
+		errorLogger.Error("unmapped error -> 500",
+			"method", r.Method,
+			"path", r.URL.Path,
+			"request_id", middleware.RequestIDFrom(r.Context()),
+			"err", err,
+		)
+	}
 	writeJSON(w, r, status, Response{
 		Code:      code,
 		Message:   msg,

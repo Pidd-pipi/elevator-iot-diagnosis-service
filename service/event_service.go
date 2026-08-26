@@ -37,7 +37,7 @@ func (s *EventService) List(filter store.EventFilter) []*domain.EntrapmentEvent 
 func (s *EventService) Get(id string) (*domain.EntrapmentEvent, error) {
 	e, ok := s.store.Events.Get(id)
 	if !ok {
-		return nil, fmt.Errorf("%v: 困人事件 %s", domain.ErrNotFound, id)
+		return nil, fmt.Errorf("%w: 困人事件 %s", domain.ErrNotFound, id)
 	}
 	return e, nil
 }
@@ -60,7 +60,7 @@ func (s *EventService) Accept(eventID, actor string, at time.Time) (*domain.Entr
 		return nil, err
 	}
 	if err := event.Accept(at); err != nil {
-		return nil, fmt.Errorf("接单失败: %v", err)
+		return nil, fmt.Errorf("接单失败: %w", err)
 	}
 
 	disposal, ok := s.store.Disposals.GetByEvent(eventID)
@@ -113,12 +113,12 @@ func (s *EventService) Resolve(eventID, actor string, req ResolveRequest, at tim
 		return nil, err
 	}
 	if !event.IsOpen() {
-		return nil, fmt.Errorf("%v: 事件已闭环，无法处置完成（当前状态 %s）", domain.ErrInvalidState, event.Status)
+		return nil, fmt.Errorf("%w: 事件已闭环，无法处置完成（当前状态 %s）", domain.ErrInvalidState, event.Status)
 	}
 
 	recoveryTime, err := parseRecoveryTime(req.RecoveryTime)
 	if err != nil {
-		return nil, fmt.Errorf("恢复时间解析失败: %v", err)
+		return nil, fmt.Errorf("恢复时间解析失败: %w", err)
 	}
 
 	// 校验处置任务必填字段（规则 6）：处置人、处理措施、恢复时间。
@@ -177,7 +177,7 @@ func (s *EventService) Escalate(eventID, actor, reason string, at time.Time) (*d
 		return nil, err
 	}
 	if !event.IsOpen() {
-		return nil, fmt.Errorf("%v: 事件已闭环，无法升级（当前状态 %s）", domain.ErrInvalidState, event.Status)
+		return nil, fmt.Errorf("%w: 事件已闭环，无法升级（当前状态 %s）", domain.ErrInvalidState, event.Status)
 	}
 	if err := event.Escalate(at, reason); err != nil {
 		return nil, err
