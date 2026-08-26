@@ -48,6 +48,7 @@ func (s *Store) Snapshot() *Snapshot {
 func (s *Store) Restore(snap *Snapshot) {
 	s.Elevators.Restore(snap.Elevators)
 	s.Reports.Restore(snap.Reports)
+	s.Events.Restore(snap.Events)
 	s.Disposals.Restore(snap.Disposals)
 	s.Faults.Restore(snap.FaultLogs)
 	s.Audits.Restore(snap.Audits)

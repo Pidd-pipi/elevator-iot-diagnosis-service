@@ -30,13 +30,16 @@ const snapshotVersion = 1
 //
 // 原子写流程：同目录临时文件 → 写数据 → fsync 文件 → close →
 // rename 原子替换 → fsync 目录，保证进程崩溃时不会留下半截文件。
-func (s *Store) Save(path string) (err error) {
+//
+// 任何错误（磁盘满、fsync 失败、rename 失败等）都原样上抛，由调用方记录
+// 日志并决定降级策略；同时通过 defer 保证临时文件句柄被关闭、临时文件被
+// 清理，避免 FD 泄漏与磁盘残留。
+func (s *Store) Save(path string) error {
 	if path == "" {
 		return nil
 	}
 	s.persistMu.Lock()
 	defer s.persistMu.Unlock()
-	defer func() { err = nil }()
 
 	snap := s.Snapshot()
 	snap.Version = snapshotVersion
@@ -56,6 +59,13 @@ func (s *Store) Save(path string) (err error) {
 		return fmt.Errorf("创建临时快照失败: %w", err)
 	}
 	tmpName := tmp.Name()
+	// 兜底清理：无论成功失败都关闭句柄并删除临时文件，避免 FD 泄漏与残留
+	// 临时文件。成功路径下 rename 后 tmpName 已不存在，Close/Remove 退化为
+	// 无害的 no-op（Close 对已关闭句柄返回 ErrClosed，Remove 返回 IsNotExist）。
+	defer func() {
+		_ = tmp.Close()
+		_ = os.Remove(tmpName)
+	}()
 
 	if err := tmp.Chmod(0o644); err != nil {
 		return fmt.Errorf("设置临时快照权限失败: %w", err)
@@ -76,12 +86,14 @@ func (s *Store) Save(path string) (err error) {
 	return nil
 }
 
-// syncDir fsync 目录，确保 rename 结果持久化；目录打开失败不阻断主流程。
+// syncDir fsync 目录，确保 rename 结果持久化；目录打开/同步失败不阻断主流程，
+// 仅作尽力而为的持久化保障（句柄始终关闭，避免 FD 泄漏）。
 func syncDir(dir string) {
 	d, err := os.Open(dir)
 	if err != nil {
 		return
 	}
+	defer d.Close()
 	_ = d.Sync()
 }
 
@@ -144,8 +156,14 @@ func (s *Store) ensureMaps(snap *Snapshot) {
 }
 
 // backupCorruptFile 将损坏文件备份到 <path>.bak（优先 rename，失败则复制）。
+// 备份后原文件被移走，避免下一轮 Load 再次解析同一损坏文件。
 func backupCorruptFile(path string) error {
 	bak := path + ".bak"
+	// 优先 rename：原子的把损坏文件移到 .bak，等价于“备份 + 移走原文件”。
+	if err := os.Rename(path, bak); err == nil {
+		return nil
+	}
+	// rename 失败（跨设备等）则退化为读取 + 写入 .bak，并删除原文件。
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return err
@@ -153,5 +171,6 @@ func backupCorruptFile(path string) error {
 	if err := os.WriteFile(bak, data, 0o644); err != nil {
 		return err
 	}
+	_ = os.Remove(path)
 	return nil
 }
