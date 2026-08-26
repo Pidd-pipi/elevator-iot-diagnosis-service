@@ -1,0 +1,18 @@
+package middleware
+
+import "net/http"
+
+// SecurityHeaders 为所有响应补充基础安全响应头。
+//
+// 注意：这里刻意不添加严格 CSP，避免破坏前端可能存在的内联脚本/样式；
+// 生产如需 CSP 可在外层网关配置。
+func SecurityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("X-Frame-Options", "DENY")
+		h.Set("Referrer-Policy", "no-referrer")
+		h.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+		next.ServeHTTP(w, r)
+	})
+}
