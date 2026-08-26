@@ -70,15 +70,16 @@ func (s *EventStore) List(filter EventFilter) []*domain.EntrapmentEvent {
 	return items
 }
 
-// ListOpen 返回全部未闭环事件。
+// ListOpen 返回全部未闭环事件（已解除/已升级均属终态，不在此列）。
 func (s *EventStore) ListOpen() []*domain.EntrapmentEvent {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	items := make([]*domain.EntrapmentEvent, 0)
 	for _, e := range s.records {
-		if e.Status != domain.EventReleased {
-			items = append(items, e.Clone())
+		if !e.IsOpen() {
+			continue
 		}
+		items = append(items, e.Clone())
 	}
 	sort.Slice(items, func(i, j int) bool { return items[i].StartedAt.After(items[j].StartedAt) })
 	return items
@@ -107,7 +108,7 @@ func (s *EventStore) CountByStatus(status domain.EventStatus) int {
 	defer s.mu.RUnlock()
 	n := 0
 	for _, e := range s.records {
-		if e.Status == status || (status == domain.EventReleased && e.Status == domain.EventEscalated) {
+		if e.Status == status {
 			n++
 		}
 	}

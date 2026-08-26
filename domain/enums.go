@@ -14,7 +14,7 @@ import (
 // 合法迁移关系：
 //
 //	alerted → accepted / escalated
-//	accepted → processing / escalated
+//	accepted → processing / released / escalated
 //	processing → released / escalated
 //	released → （终态）
 //	escalated → （终态）
@@ -36,7 +36,7 @@ const (
 // eventTransitions 记录困人事件状态机的合法迁移表。
 var eventTransitions = map[EventStatus][]EventStatus{
 	EventAlerted:    {EventAccepted, EventEscalated},
-	EventAccepted:   {EventEscalated},
+	EventAccepted:   {EventProcessing, EventReleased, EventEscalated},
 	EventProcessing: {EventReleased, EventEscalated},
 	EventReleased:   {},
 	EventEscalated:  {},

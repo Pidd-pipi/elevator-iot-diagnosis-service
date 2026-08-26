@@ -72,7 +72,10 @@ func (d *DisposalRecord) Complete(disposer, measure, note string, recoveryTime t
 	d.Measure = measure
 	t := recoveryTime
 	d.RecoveryTime = &t
+	d.Note = note
 	d.Status = EventReleased
+	// 按时判定：恢复时间不晚于接单时间 + 处置时限即为按时。
+	d.Timely = !recoveryTime.After(d.AcceptedAt.Add(deadline))
 	d.UpdatedAt = recoveryTime
 	return nil
 }
@@ -81,6 +84,7 @@ func (d *DisposalRecord) Complete(disposer, measure, note string, recoveryTime t
 func (d *DisposalRecord) MarkEscalated(at time.Time) {
 	d.Status = EventEscalated
 	d.Timely = false
+	d.EscalationCount++
 	d.UpdatedAt = at
 }
 

@@ -111,6 +111,7 @@ func (e *EntrapmentEvent) Release(at time.Time) error {
 	e.Status = EventReleased
 	t := at
 	e.ReleasedAt = &t
+	e.EndedAt = &t
 	e.UpdatedAt = at
 	return nil
 }
@@ -123,7 +124,9 @@ func (e *EntrapmentEvent) Escalate(at time.Time, reason string) error {
 	e.Status = EventEscalated
 	t := at
 	e.EscalatedAt = &t
+	e.EndedAt = &t
 	e.EscalationCount++
+	e.SecondAlarmSent = true
 	e.Description = fmt.Sprintf("%s；已升级并发送二次告警（原因：%s）", e.Description, reason)
 	e.UpdatedAt = at
 	return nil
