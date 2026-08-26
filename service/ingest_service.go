@@ -185,9 +185,12 @@ func (s *IngestService) trackEntrapment(report *domain.StateReport, result *Inge
 }
 
 // auditRecord 记录审计日志（复用 audit 服务能力，避免循环依赖）。
+// request id 从当前请求作用域容器读取，使采集链路触发的 event.alert 审计
+// 也能与网关 trace 串起来。
 func (s *IngestService) auditRecord(action, actor, targetType, targetID, detail string, at time.Time) {
 	log := domain.NewAuditLog(action, actor, targetType, targetID, detail, at)
 	log.ID = store.NewID("audit")
+	log.RequestID = CurrentTrace().RequestID()
 	s.store.Audits.Append(log)
 }
 

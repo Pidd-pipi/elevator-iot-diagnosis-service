@@ -63,13 +63,18 @@ func Router(svc *service.Services, cfg *config.Config, logger *slog.Logger, webF
 	mux.Handle("/", staticHandler(webFS))
 
 	// 中间件链（执行顺序由外到内）：
-	// requestID → securityHeaders → auditLogger → recoverer → mux。
+	// requestID → requestScope → securityHeaders → auditLogger → recoverer → mux。
+	// requestID 必须最外层，确保下游所有中间件（requestScope/audit/recoverer）与
+	// handler 都能从 context 与 r.Header 取到同一个 trace id。
+	// requestScope 紧随其后，把 trace id 绑定到 service 请求作用域容器，
+	// 供业务审计日志（event.accept 等）带上 trace id。
 	// auditLogger 包在 recoverer 外层，确保 panic 被恢复后的 500 响应也能记录访问日志。
 	var handler http.Handler = mux
-	handler = middleware.RequestID(handler)
 	handler = middleware.Recoverer(logger)(handler)
 	handler = middleware.AuditLogger(svc.Store, logger)(handler)
 	handler = middleware.SecurityHeaders(handler)
+	handler = RequestScope(handler)
+	handler = middleware.RequestID(handler)
 	return handler
 }
 
