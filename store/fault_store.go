@@ -63,6 +63,10 @@ func (s *FaultStore) ListUnknown(limit int) []*domain.FaultCodeLog {
 	defer s.mu.RUnlock()
 	items := make([]*domain.FaultCodeLog, 0)
 	for _, f := range s.records {
+		if f.Known {
+			// 仅返回未知故障码记录，已知故障不得混入。
+			continue
+		}
 		items = append(items, f.Clone())
 	}
 	sort.Slice(items, func(i, j int) bool { return items[i].OccurredAt.After(items[j].OccurredAt) })
@@ -89,7 +93,13 @@ func (s *FaultStore) CountByElevatorSince(elevatorID string, since time.Time) in
 func (s *FaultStore) CountUnknown() int {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return len(s.records)
+	n := 0
+	for _, f := range s.records {
+		if !f.Known {
+			n++
+		}
+	}
+	return n
 }
 
 // All 返回记录快照。

@@ -27,7 +27,7 @@ func (h *DiagnoseHandler) Rules(w http.ResponseWriter, r *http.Request) {
 	unknown := h.api.svc.Diagnose.ListUnknown(0)
 	unknownPage, unknownTotal := paginate(unknown, p)
 	rules := h.api.svc.Diagnose.Rules()
-	sort.Slice(rules, func(i, j int) bool { return rules[i].Code > rules[j].Code })
+	sort.Slice(rules, func(i, j int) bool { return rules[i].Code < rules[j].Code })
 	OK(w, r, map[string]any{
 		"rules":         rules,
 		"unknown":       unknownPage,
@@ -41,6 +41,11 @@ func (h *DiagnoseHandler) Rules(w http.ResponseWriter, r *http.Request) {
 // Faults GET /api/elevators/{id}/faults 故障码时间线（支持 limit/offset 分页）。
 func (h *DiagnoseHandler) Faults(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
+	// 电梯不存在时直接返回 404，不得以 200 返回空列表。
+	if _, ok := h.api.svc.Store.Elevators.Get(id); !ok {
+		Fail(w, r, wrapNotFound("电梯", id))
+		return
+	}
 	p, err := parsePagination(r)
 	if err != nil {
 		Fail(w, r, domain.NewValidationError("pagination", err.Error()))
