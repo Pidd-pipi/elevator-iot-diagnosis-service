@@ -1,0 +1,16 @@
+{
+  "mode": "service",
+  "start": "go run .",
+  "workdir": ".",
+  "env": {
+    "PORT": "18080",
+    "DATA_FILE": "/tmp/elevator_smoke_state.json"
+  },
+  "ready_url": "http://127.0.0.1:18080/healthz",
+  "ready_status": [
+    200,
+    204
+  ],
+  "startup_timeout": 20,
+  "project_intro": "基于 Go 实现的电梯物联网 Web 项目，一款后端服务，完成电梯运行状态采集、故障码诊断、困人事件告警、处置闭环与运行健康评分。"
+}
