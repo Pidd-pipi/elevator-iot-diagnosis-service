@@ -85,8 +85,12 @@ func (s *ElevatorStore) All() map[string]*domain.Elevator {
 }
 
 // Restore 从快照恢复记录。
+// 兜底 nil map，避免历史快照缺字段后写入崩溃。
 func (s *ElevatorStore) Restore(records map[string]*domain.Elevator) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if records == nil {
+		records = make(map[string]*domain.Elevator)
+	}
 	s.records = records
 }

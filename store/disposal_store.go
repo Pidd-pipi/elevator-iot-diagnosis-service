@@ -112,8 +112,12 @@ func (s *DisposalStore) All() map[string]*domain.DisposalRecord {
 }
 
 // Restore 从快照恢复。
+// 兜底 nil map，避免历史快照缺字段后写入崩溃。
 func (s *DisposalStore) Restore(records map[string]*domain.DisposalRecord) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if records == nil {
+		records = make(map[string]*domain.DisposalRecord)
+	}
 	s.records = records
 }

@@ -20,8 +20,14 @@ func NewAuditService(st *store.Store, logger *slog.Logger) *AuditService {
 }
 
 // Record 记录一条业务审计日志并落盘到审计仓储。
+//
+// 修复前：仅打印日志、未落盘，导致 event.accept/resolve/escalate 等
+// 业务动作在审计列表里查不到。此处补齐 ID 分配与 Append，与
+// middleware/audit.go、IngestService.auditRecord 保持一致。
 func (s *AuditService) Record(action, actor, targetType, targetID, detail string, at time.Time) *domain.AuditLog {
 	log := domain.NewAuditLog(action, actor, targetType, targetID, detail, at)
+	log.ID = store.NewID("audit")
+	s.store.Audits.Append(log)
 	s.logger.Info("audit", "action", action, "actor", actor, "target_type", targetType, "target_id", targetID, "detail", detail)
 	return log
 }

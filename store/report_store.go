@@ -105,8 +105,12 @@ func (s *ReportStore) All() map[string]*domain.StateReport {
 }
 
 // Restore 从快照恢复。
+// 兜底 nil map，避免历史快照缺字段后写入崩溃。
 func (s *ReportStore) Restore(records map[string]*domain.StateReport) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if records == nil {
+		records = make(map[string]*domain.StateReport)
+	}
 	s.records = records
 }

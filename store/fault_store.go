@@ -112,8 +112,12 @@ func (s *FaultStore) All() map[string]*domain.FaultCodeLog {
 }
 
 // Restore 从快照恢复。
+// 兜底 nil map，避免历史快照缺字段后写入崩溃。
 func (s *FaultStore) Restore(records map[string]*domain.FaultCodeLog) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if records == nil {
+		records = make(map[string]*domain.FaultCodeLog)
+	}
 	s.records = records
 }

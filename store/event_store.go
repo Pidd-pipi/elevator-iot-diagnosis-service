@@ -126,8 +126,12 @@ func (s *EventStore) All() map[string]*domain.EntrapmentEvent {
 }
 
 // Restore 从快照恢复。
+// 兜底 nil map，避免历史快照缺字段后写入崩溃。
 func (s *EventStore) Restore(records map[string]*domain.EntrapmentEvent) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if records == nil {
+		records = make(map[string]*domain.EntrapmentEvent)
+	}
 	s.records = records
 }

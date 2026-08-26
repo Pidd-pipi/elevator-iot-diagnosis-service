@@ -53,9 +53,13 @@ func (s *ObservationStore) All() map[string]*EntrapmentObservation {
 }
 
 // Restore 从快照恢复。
+// 兜底 nil map，避免历史快照缺字段后 Set 写入崩溃。
 func (s *ObservationStore) Restore(records map[string]*EntrapmentObservation) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if records == nil {
+		records = make(map[string]*EntrapmentObservation)
+	}
 	s.records = records
 }
 

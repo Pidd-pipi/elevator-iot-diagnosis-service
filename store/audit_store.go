@@ -79,8 +79,15 @@ func (s *AuditStore) All() map[string]*domain.AuditLog {
 }
 
 // Restore 从快照恢复。
+//
+// 历史快照可能缺字段（nil map），直接赋值会导致后续 Append 时
+// "assignment to entry in nil map" 崩溃；此处兜底为空 map，保证
+// Restore 之后即可安全写入，不依赖调用方事先 ensureMaps。
 func (s *AuditStore) Restore(records map[string]*domain.AuditLog) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if records == nil {
+		records = make(map[string]*domain.AuditLog)
+	}
 	s.records = records
 }
