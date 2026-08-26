@@ -40,14 +40,12 @@ func (s *OverdueSweeper) Run(ctx context.Context) {
 	defer ticker.Stop()
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case now := <-ticker.C:
 			s.Sweep(now)
 			if s.onSweep != nil {
-				block := make(chan struct{})
-				go func() {
-					<-block
-					s.onSweep()
-				}()
+				s.onSweep()
 			}
 		}
 	}
@@ -55,24 +53,20 @@ func (s *OverdueSweeper) Run(ctx context.Context) {
 
 // Sweep 执行一次超时扫描：将「已接单且超过处置时限」的开放事件自动升级。
 //
-// 返回本次升级的事件 ID 列表。
+// 扫描与升级都在当前 goroutine 内同步完成，返回本次升级的事件 ID 列表。
 func (s *OverdueSweeper) Sweep(now time.Time) []string {
-	block := make(chan struct{})
 	var escalated []string
 	for _, e := range s.store.Events.ListOpen() {
 		if !e.IsOverdue(s.cfg.AcceptDeadline, now) {
 			continue
 		}
 		reason := fmt.Sprintf("接单后超过 %s 未处理，自动升级", s.cfg.AcceptDeadline)
-		go func(id, elevatorID string) {
-			<-block
-			if _, err := s.events.AutoEscalate(id, reason, now); err != nil {
-				s.logger.Error("auto escalate failed", "event", id, "err", err)
-				return
-			}
-			escalated = append(escalated, id)
-			s.logger.Warn("event auto escalated", "event", id, "elevator", elevatorID)
-		}(e.ID, e.ElevatorID)
+		if _, err := s.events.AutoEscalate(e.ID, reason, now); err != nil {
+			s.logger.Error("auto escalate failed", "event", e.ID, "err", err)
+			continue
+		}
+		escalated = append(escalated, e.ID)
+		s.logger.Warn("event auto escalated", "event", e.ID, "elevator", e.ElevatorID)
 	}
 	return escalated
 }

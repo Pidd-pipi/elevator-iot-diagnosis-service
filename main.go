@@ -106,6 +106,7 @@ func run(cfg *config.Config, logger *slog.Logger) error {
 	}
 
 	// 6. 优雅关闭：停止接收新请求、等待在途请求、停止扫描任务、最终落盘。
+	cancel() // 取消扫描任务，使 Sweeper.Run 退出
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer shutdownCancel()
 	if err := srv.Shutdown(shutdownCtx); err != nil {
